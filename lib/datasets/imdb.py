@@ -5,6 +5,7 @@
 # Written by Ross Girshick
 # --------------------------------------------------------
 
+import copy
 import os
 import os.path as osp
 import PIL
@@ -108,11 +109,14 @@ class imdb(object):
             oldx2 = boxes[:, 2].copy()
             boxes[:, 0] = widths[i] - oldx2 - 1
             boxes[:, 2] = widths[i] - oldx1 - 1
-            assert (boxes[:, 2] >= boxes[:, 0]).all()
-            entry = {'boxes' : boxes,
-                     'gt_overlaps' : self.roidb[i]['gt_overlaps'],
-                     'gt_classes' : self.roidb[i]['gt_classes'],
-                     'flipped' : True}
+            assert (boxes[:, 2] >= boxes[:, 0]).all(), '{}: {},{}'.format(self.image_path_at(i), oldx1, oldx2)
+            entry = copy.deepcopy(self.roidb[i])
+            entry['boxes'] = boxes
+            entry['flipped'] = True
+            # entry = {'boxes' : boxes,
+            #          'gt_overlaps' : self.roidb[i]['gt_overlaps'],
+            #          'gt_classes' : self.roidb[i]['gt_classes'],
+            #          'flipped' : True}
             self.roidb.append(entry)
         self._image_index = self._image_index * 2
 

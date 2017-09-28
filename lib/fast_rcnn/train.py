@@ -7,15 +7,18 @@
 
 """Train a Fast R-CNN network."""
 
-import caffe
 from fast_rcnn.config import cfg
 import roi_data_layer.roidb as rdl_roidb
 from utils.timer import Timer
 import numpy as np
 import os
 
+os.environ['GLOG_minloglevel'] = '0'
+import caffe
+
 from caffe.proto import caffe_pb2
 import google.protobuf as pb2
+from google.protobuf import text_format
 
 class SolverWrapper(object):
     """A simple wrapper around Caffe's solver.
@@ -48,7 +51,7 @@ class SolverWrapper(object):
 
         self.solver_param = caffe_pb2.SolverParameter()
         with open(solver_prototxt, 'rt') as f:
-            pb2.text_format.Merge(f.read(), self.solver_param)
+            text_format.Merge(f.read(), self.solver_param)
 
         self.solver.net.layers[0].set_roidb(roidb)
 
@@ -118,9 +121,11 @@ def get_training_roidb(imdb):
         imdb.append_flipped_images()
         print 'done'
 
-    print 'Preparing training data...'
-    rdl_roidb.prepare_roidb(imdb)
-    print 'done'
+    # we don't need this step for nexar2
+    if 'nexar2' not in imdb.name:
+        print 'Preparing training data...'
+        rdl_roidb.prepare_roidb(imdb)
+        print 'done'
 
     return imdb.roidb
 
@@ -149,10 +154,11 @@ def filter_roidb(roidb):
     return filtered_roidb
 
 def train_net(solver_prototxt, roidb, output_dir,
-              pretrained_model=None, max_iters=40000):
+              pretrained_model=None, max_iters=40000, need_filter_roidb=True):
     """Train a Fast R-CNN network."""
 
-    roidb = filter_roidb(roidb)
+    if need_filter_roidb:
+        roidb = filter_roidb(roidb)
     sw = SolverWrapper(solver_prototxt, roidb, output_dir,
                        pretrained_model=pretrained_model)
 

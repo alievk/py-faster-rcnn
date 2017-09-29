@@ -105,37 +105,3 @@ class SolverWrapper(object):
         if last_snapshot_iter != self.solver.iter:
             model_paths.append(self.snapshot())
         return model_paths
-
-class SolverWrapper2(object):
-        def __init__(self, solver_prototxt, roidb, output_dir,
-                 pretrained_model=None):
-            pass
-
-
-
-def get_training_roidb(imdb):
-    """Returns a roidb (Region of Interest database) for use in training."""
-    if cfg.TRAIN.USE_FLIPPED:
-        print 'Appending horizontally-flipped training examples...'
-        imdb.append_flipped_images()
-        print 'done'
-
-    # we don't need this step for nexar2
-    if 'nexar2' not in imdb.name:
-        print 'Preparing training data...'
-        rdl_roidb.prepare_roidb(imdb)
-        print 'done'
-
-    return imdb.roidb
-
-def train_net(solver_prototxt, output_dir,
-              pretrained_model=None, max_iters=40000, need_filter_roidb=True):
-    """Train a Fast R-CNN network."""
-
-    sw = SolverWrapper(solver_prototxt, output_dir,
-                       pretrained_model=pretrained_model)
-
-    print 'Solving...'
-    model_paths = sw.train_model(max_iters)
-    print 'done solving'
-    return model_paths

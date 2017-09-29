@@ -18,8 +18,22 @@ import yaml
 from multiprocessing import Process, Queue
 from datasets.factory import get_imdb
 import datasets.imdb
-from fast_rcnn.train import get_training_roidb
 import roi_data_layer.roidb as rdl_roidb
+
+def get_training_roidb(imdb):
+    """Returns a roidb (Region of Interest database) for use in training."""
+    if cfg.TRAIN.USE_FLIPPED:
+        print 'Appending horizontally-flipped training examples...'
+        imdb.append_flipped_images()
+        print 'done'
+
+    # we don't need this step for nexar2
+    if 'nexar2' not in imdb.name:
+        print 'Preparing training data...'
+        rdl_roidb.prepare_roidb(imdb)
+        print 'done'
+
+    return imdb.roidb
 
 def combined_roidb(imdb_names):
     def get_roidb(imdb_name):

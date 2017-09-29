@@ -10,13 +10,14 @@
 """Train a Fast R-CNN network on a region of interest database."""
 
 import _init_paths
-from fast_rcnn.train import train_net
+from fast_rcnn.train import *
 from fast_rcnn.config import cfg, cfg_from_file, cfg_from_list, get_output_dir
 import caffe
 import argparse
 import pprint
 import numpy as np
 import sys
+from time import gmtime, strftime
 
 def parse_args():
     """
@@ -68,6 +69,10 @@ if __name__ == '__main__':
 
     cfg.GPU_ID = args.gpu_id
 
+    # set up caffe
+    caffe.set_mode_gpu()
+    caffe.set_device(args.gpu_id)
+
     print('Using config:')
     pprint.pprint(cfg)
 
@@ -76,13 +81,11 @@ if __name__ == '__main__':
         np.random.seed(cfg.RNG_SEED)
         caffe.set_random_seed(cfg.RNG_SEED)
 
-    # set up caffe
-    caffe.set_mode_gpu()
-    caffe.set_device(args.gpu_id)
-
     output_dir = get_output_dir(args.imdb_name)
     print 'Output will be saved to `{:s}`'.format(output_dir)
 
-    train_net(args.solver, output_dir,
-              pretrained_model=args.pretrained_model,
-              max_iters=args.max_iters)
+    sw = SolverWrapper(args.solver, output_dir,
+                       pretrained_model=args.pretrained_model)
+    print 'Solving...'
+    model_paths = sw.train_model(args.max_iters)
+    print 'done solving'

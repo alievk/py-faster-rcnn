@@ -8,7 +8,6 @@
 """Train a Fast R-CNN network."""
 
 from fast_rcnn.config import cfg
-import roi_data_layer.roidb as rdl_roidb
 from utils.timer import Timer
 import numpy as np
 import os
@@ -26,7 +25,7 @@ class SolverWrapper(object):
     use to unnormalize the learned bounding-box regression weights.
     """
 
-    def __init__(self, solver_prototxt, roidb, output_dir,
+    def __init__(self, solver_prototxt, output_dir,
                  pretrained_model=None):
         """Initialize the SolverWrapper."""
         self.output_dir = output_dir
@@ -37,13 +36,8 @@ class SolverWrapper(object):
             # fixed statistics to compute a priori
             assert cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED
 
-        if cfg.TRAIN.BBOX_REG:
-            print 'Computing bounding-box regression targets...'
-            self.bbox_means, self.bbox_stds = \
-                    rdl_roidb.add_bbox_regression_targets(roidb)
-            print 'done'
-
-        self.solver = caffe.SGDSolver(solver_prototxt)
+        #self.solver = caffe.SGDSolver(solver_prototxt)
+        self.solver = caffe.AdamSolver(solver_prototxt)
         if pretrained_model is not None:
             print ('Loading pretrained model '
                    'weights from {:s}').format(pretrained_model)
@@ -52,8 +46,6 @@ class SolverWrapper(object):
         self.solver_param = caffe_pb2.SolverParameter()
         with open(solver_prototxt, 'rt') as f:
             text_format.Merge(f.read(), self.solver_param)
-
-        self.solver.net.layers[0].set_roidb(roidb)
 
     def snapshot(self):
         """Take a snapshot of the network after unnormalizing the learned
@@ -114,6 +106,13 @@ class SolverWrapper(object):
             model_paths.append(self.snapshot())
         return model_paths
 
+class SolverWrapper2(object):
+        def __init__(self, solver_prototxt, roidb, output_dir,
+                 pretrained_model=None):
+            pass
+
+
+
 def get_training_roidb(imdb):
     """Returns a roidb (Region of Interest database) for use in training."""
     if cfg.TRAIN.USE_FLIPPED:
@@ -129,37 +128,11 @@ def get_training_roidb(imdb):
 
     return imdb.roidb
 
-def filter_roidb(roidb):
-    """Remove roidb entries that have no usable RoIs."""
-
-    def is_valid(entry):
-        # Valid images have:
-        #   (1) At least one foreground RoI OR
-        #   (2) At least one background RoI
-        overlaps = entry['max_overlaps']
-        # find boxes with sufficient overlap
-        fg_inds = np.where(overlaps >= cfg.TRAIN.FG_THRESH)[0]
-        # Select background RoIs as those within [BG_THRESH_LO, BG_THRESH_HI)
-        bg_inds = np.where((overlaps < cfg.TRAIN.BG_THRESH_HI) &
-                           (overlaps >= cfg.TRAIN.BG_THRESH_LO))[0]
-        # image is only valid if such boxes exist
-        valid = len(fg_inds) > 0 or len(bg_inds) > 0
-        return valid
-
-    num = len(roidb)
-    filtered_roidb = [entry for entry in roidb if is_valid(entry)]
-    num_after = len(filtered_roidb)
-    print 'Filtered {} roidb entries: {} -> {}'.format(num - num_after,
-                                                       num, num_after)
-    return filtered_roidb
-
-def train_net(solver_prototxt, roidb, output_dir,
+def train_net(solver_prototxt, output_dir,
               pretrained_model=None, max_iters=40000, need_filter_roidb=True):
     """Train a Fast R-CNN network."""
 
-    if need_filter_roidb:
-        roidb = filter_roidb(roidb)
-    sw = SolverWrapper(solver_prototxt, roidb, output_dir,
+    sw = SolverWrapper(solver_prototxt, output_dir,
                        pretrained_model=pretrained_model)
 
     print 'Solving...'

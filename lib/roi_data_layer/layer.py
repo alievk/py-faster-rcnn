@@ -16,6 +16,53 @@ from roi_data_layer.minibatch import get_minibatch
 import numpy as np
 import yaml
 from multiprocessing import Process, Queue
+from datasets.factory import get_imdb
+import datasets.imdb
+from fast_rcnn.train import get_training_roidb
+import roi_data_layer.roidb as rdl_roidb
+
+def combined_roidb(imdb_names):
+    def get_roidb(imdb_name):
+        imdb = get_imdb(imdb_name)
+        print 'Loaded dataset `{:s}` for training'.format(imdb.name)
+        imdb.set_proposal_method(cfg.TRAIN.PROPOSAL_METHOD)
+        print 'Set proposal method: {:s}'.format(cfg.TRAIN.PROPOSAL_METHOD)
+        roidb = get_training_roidb(imdb)
+        return roidb
+
+    roidbs = [get_roidb(s) for s in imdb_names.split('+')]
+    roidb = roidbs[0]
+    if len(roidbs) > 1:
+        for r in roidbs[1:]:
+            roidb.extend(r)
+        imdb = datasets.imdb.imdb(imdb_names)
+    else:
+        imdb = get_imdb(imdb_names)
+    return imdb, roidb
+
+def filter_roidb(roidb):
+    """Remove roidb entries that have no usable RoIs."""
+
+    def is_valid(entry):
+        # Valid images have:
+        #   (1) At least one foreground RoI OR
+        #   (2) At least one background RoI
+        overlaps = entry['max_overlaps']
+        # find boxes with sufficient overlap
+        fg_inds = np.where(overlaps >= cfg.TRAIN.FG_THRESH)[0]
+        # Select background RoIs as those within [BG_THRESH_LO, BG_THRESH_HI)
+        bg_inds = np.where((overlaps < cfg.TRAIN.BG_THRESH_HI) &
+                           (overlaps >= cfg.TRAIN.BG_THRESH_LO))[0]
+        # image is only valid if such boxes exist
+        valid = len(fg_inds) > 0 or len(bg_inds) > 0
+        return valid
+
+    num = len(roidb)
+    filtered_roidb = [entry for entry in roidb if is_valid(entry)]
+    num_after = len(filtered_roidb)
+    print 'Filtered {} roidb entries: {} -> {}'.format(num - num_after,
+                                                       num, num_after)
+    return filtered_roidb
 
 class RoIDataLayer(caffe.Layer):
     """Fast R-CNN data layer used for training."""
@@ -62,8 +109,21 @@ class RoIDataLayer(caffe.Layer):
             minibatch_db = [self._roidb[i] for i in db_inds]
             return get_minibatch(minibatch_db, self._num_classes)
 
-    def set_roidb(self, roidb):
+    def set_imdb(self, imdb_name):
         """Set the roidb to be used by this layer during training."""
+        imdb, roidb = combined_roidb(imdb_name)
+        print '{:d} roidb entries'.format(len(roidb))
+
+        if 'nexar2' not in imdb_name:
+            roidb = filter_roidb(roidb)
+
+        if cfg.TRAIN.BBOX_REG:
+            print 'Computing bounding-box regression targets...'
+            self.bbox_means, self.bbox_stds = \
+                rdl_roidb.add_bbox_regression_targets(roidb)
+            print 'done'
+
+        self._imdb = imdb
         self._roidb = roidb
         self._shuffle_roidb_inds()
         if cfg.TRAIN.USE_PREFETCH:
@@ -86,7 +146,9 @@ class RoIDataLayer(caffe.Layer):
         # parse the layer parameter string, which must be valid YAML
         layer_params = yaml.load(self.param_str_)
 
-        self._num_classes = layer_params['num_classes']
+        self.set_imdb(layer_params['imdb'])
+
+        self._num_classes = self._imdb.num_classes
 
         self._name_to_top_map = {}
 

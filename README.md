@@ -10,7 +10,11 @@ py-faster-rcnn$ ./data/scripts/fetch_faster_rcnn_models.sh
 - Edit ./experiments/scripts/faster_rcnn_e2e_vgg16_1.sh as you feel appropriate (e.g., number of iterations, snapshot interval etc).
 - Run training 
 ```
-py-faster-rcnn$ experiments/scripts/faster_rcnn_e2e_vgg16_1.sh
+py-faster-rcnn$ experiments/scripts/faster_rcnn_e2e_vgg16_1.sh 0
+```
+- Evaluate 
+```
+py-faster-rcnn$ ./experiments/scripts/faster_rcnn_end2end_nexar2.sh 0 VGG16 test output/faster_rcnn_end2end_1/nexar2_train_40k/your_snapshot.caffemodel
 ```
 
 ### Disclaimer

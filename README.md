@@ -1,3 +1,14 @@
+# Faster R-CNN for the Nexar Challenge 2
+
+- Follow the instructions below to build Caffe and Faster R-CNN. Apply this [patch](https://gist.github.com/duburlan/38655d72f423bfad259796851918515b#file-caffe_patch) to Caffe to be able to finetune PASCAL/COCO model. (Out of the box Caffe would crash if you try to load weights into different model).
+- Create a link *nexar2* to the Nexar dataset in ./data subfolder. Assuming training images are in *train* subfolder.
+- Put [this](https://github.com/duburlan/nexar2/blob/master/train.csv) and [this](https://github.com/duburlan/nexar2/blob/master/val.csv) into ./data/nexar2 and rename train_40k.csv and val_10k.csv, respectively.
+- Download pretrained models
+``` Shell
+py-faster-rcnn$ ./data/scripts/fetch_faster_rcnn_models.sh
+```
+
+
 ### Disclaimer
 
 The official Faster R-CNN code (written in MATLAB) is available [here](https://github.com/ShaoqingRen/faster_rcnn).

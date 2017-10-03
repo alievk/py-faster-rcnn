@@ -7,7 +7,11 @@
 ``` Shell
 py-faster-rcnn$ ./data/scripts/fetch_faster_rcnn_models.sh
 ```
-
+- Edit ./experiments/scripts/faster_rcnn_e2e_vgg16_1.sh as you feel appropriate (e.g., number of iterations, snapshot interval etc).
+- Run training 
+```
+py-faster-rcnn$ experiments/scripts/faster_rcnn_e2e_vgg16_1.sh
+```
 
 ### Disclaimer
 
